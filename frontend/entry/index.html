@@ -6,12 +6,21 @@
   <title>Farm Expense Tracker</title>
 
   <!-- Link to CSS -->
-  <link rel="stylesheet" href="styles/style.css" />
+  <link rel="stylesheet" href="../shared/styles.css" />
 </head>
 
 <body>
-  <h1>Farm Expense Tracker</h1>
-
+  <header class="header">
+    <h1>Farm Expense Tracker</h1>
+    <p>Track and manage your farm expenses efficiently</p>
+  </header>
+  
+  <main>
+    <section class="summary">
+      <h2>Expense Summary</h2>
+      <p>Total Expenses: UGX <span id="totalExpenses">0.00</span></p>
+    </section>
+  
   <form id="expenseForm">
     <label for="date">Date</label>
     <input type="date" id="date" name="date" required />
@@ -54,8 +63,8 @@
   </table>
 
   <!-- Link to JavaScript -->
-  <script src="scripts/app.js"></script>
-
+  <script src="app.js"></script>
+  </main>
 </body>
 </html>
 

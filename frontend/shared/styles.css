@@ -1,4 +1,12 @@
 /* Form styling */
+
+.header {
+  background-color: #9bcbdd;
+  color: white;
+  padding: 2rem;
+  text-align: center;
+}
+
 #expenseForm {
   display: flex;
   flex-direction: column;
@@ -22,7 +30,7 @@
 
 #expenseForm button {
   padding: 10px 20px;
-  background-color: #4CAF50;
+  background-color: #71e8e2;
   color: white;
   border: none;
   border-radius: 4px;
@@ -31,7 +39,7 @@
 }
 
 #expenseForm button:hover {
-  background-color: #45a049;
+  background-color: #2ba0d6;
 }
 
 /* Table styling */
@@ -49,6 +57,6 @@
 }
 
 #expensesTable th {
-  background-color: #4CAF50;
+  background-color: #8b9598;
   color: white;
 }
