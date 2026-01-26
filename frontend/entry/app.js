@@ -1,5 +1,41 @@
 const API_BASE_URL = 'http://localhost:8000';
 
+let isError = false;
+
+// Clean number input fields
+function cleanNumber(str) {
+  return str.replace(/[^\d.]/g, '');
+}
+
+function isInvalidNumber(str) {
+  return /\d+e\d+/i.test(str);
+}
+
+// Validation 
+function validateExpense({date, person, description, amount}) {
+  if (!date || !person || !description || amount <= 0) {
+    alert('Please fill all required fields with valid data.');
+    isError = true;
+    return false;
+  }
+  return true;
+}
+
+// API helpers 
+async function createExpense(data) {
+  return fetch(`${API_BASE_URL}/api/expenses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+}
+
+async function deleteExpense(id) {
+  return fetch(`${API_BASE_URL}/api/expenses/${id}`, {
+    method: 'DELETE'
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('expenseForm');
   const tbody = document.querySelector('#expensesTable tbody');
@@ -14,30 +50,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const date = form.date.value;
     const person = form.person.value.trim();
     const description = form.description.value.trim();
-    const amount = parseFloat(form.amount.value) || 0;
+    isError = false;
+    const rawAmount = cleanNumber(form.amount.value);
+    if (isInvalidNumber(rawAmount)) {
+      alert('Invalid amount format');
+      return;
+    }
+    const amount = Number(rawAmount);
     const cost_centre = form["cost-centre"].value;
 
     // Basic validation
-    if (!date || !person || !description || amount <= 0) {
-      alert('Please fill all required fields with valid data.');
-      return;
-    }
+    if (!validateExpense({date, person, description, amount}) || isError) return; 
 
     // Submit to API
     try {
-      const response = await fetch(`${API_BASE_URL}/api/expenses`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          date,
-          person,
-          description,
-          amount,
-          cost_centre
-        })
-      });
+      const response = await createExpense({
+        date,
+        person,
+        description,
+        amount,
+        cost_centre   
+      })
 
       if (response.ok) {
         const expense = await response.json();
@@ -67,24 +100,42 @@ document.addEventListener('DOMContentLoaded', () => {
   function addExpenseRow(expense) {
     const tr = document.createElement('tr');
     tr.dataset.expenseId = expense.id;
-    tr.innerHTML = `
-      <td>${escapeHtml(expense.date)}</td>
-      <td>${escapeHtml(expense.person)}</td>
-      <td>${escapeHtml(expense.description)}</td>
-      <td>${parseFloat(expense.amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-      <td>${escapeHtml(expense.cost_centre)}</td>
-      <td><button class="delete-btn">Delete</button></td>
-    `;
+    tr.dataset.amount = expense.amount;
+    function createCell(text) {
+      const td = document.createElement('td');
+      td.textContent = text ?? '';
+      return td;
+    }
+
+    const amountFormatted = parseFloat(expense.amount).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    tr.append(
+      createCell(expense.date),
+      createCell(expense.person),
+      createCell(expense.description),
+      createCell(amountFormatted),
+      createCell(expense.cost_centre)
+    );
+
+    // Delete button
+
+    const deleteTd = document.createElement('td');
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.className = 'delete-btn';
+    deleteTd.appendChild(deleteBtn);
+    tr.appendChild(deleteTd);
 
     tbody.appendChild(tr);
 
     // Add delete functionality
-    tr.querySelector('.delete-btn').addEventListener('click', async () => {
+    deleteBtn.addEventListener('click', async () => {
       if (confirm('Are you sure you want to delete this expense?')) {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/expenses/${expense.id}`, {
-            method: 'DELETE'
-          });
+          const response = await deleteExpense(expense.id);
           if (response.ok) {
             tr.remove();
           }
@@ -95,11 +146,5 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-
-  // Simple XSS protection helper
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
+  
 })
