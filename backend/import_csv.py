@@ -48,9 +48,9 @@ def import_expenses():
         4: "Remittances",
         5: "Admin Costs",
         6: "Termination",
-        7: "Other",
+        7: "AgroProjects",
         8: "Construction",
-        9: "Seedlings",
+        9: "AgroForestry",
         10: "Coffee"
     }
     
@@ -124,7 +124,8 @@ def import_expenses():
                 person=person,
                 description=description,
                 amount=amount,
-                cost_centre=cost_centre
+                business_unit=cost_centre,
+                project=None  # Imported data has no project info
             )
             
             db.add(expense)

@@ -9,4 +9,5 @@ class Expense(Base):
     person = Column(String, nullable=False)
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
-    cost_centre = Column(String, nullable=False)
+    business_unit = Column(String, nullable=False)
+    project = Column(String, nullable=True)

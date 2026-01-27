@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://192.168.100.198:8000';
+const API_BASE_URL = 'http://192.168.1.175:8000';
 
 document.addEventListener('DOMContentLoaded', () => {
   const totalExpensesSpan = document.getElementById('dashTotalExpenses');
@@ -11,17 +11,44 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const currentQuarterExpensesSpan = document.getElementById('currentQuarterExpenses');
   const currentQuarterRemittancesSpan = document.getElementById('currentQuarterRemittances');
+  // previousQuarterExpenses
+  // previousQuarterRemittances
   const currentQuarterBalanceSpan = document.getElementById('currentQuarterBalance');
   const selectedQuarterExpensesSpan = document.getElementById('selectedQuarterExpenses');
   const selectedQuarterRemittancesSpan = document.getElementById('selectedQuarterRemittances');
   const selectedQuarterBalanceSpan = document.getElementById('selectedQuarterBalance');
   const selectedQuarterTitleH4 = document.getElementById('selectedQuarterTitle');
   const quarterSelector = document.getElementById('quarterSelector');
+  const chartTitle = document.getElementById('chartTitle');
+  const chartBackBtn = document.getElementById('chartBackBtn');
   
   let allExpenses = [];
+  let currentChartView = 'business-units'; // or 'projects'
+  let currentBusinessUnit = null;
   
   let chartInstance = null;
   let monthlyChartInstance = null;
+
+  // Back button handler
+  chartBackBtn.addEventListener('click', () => {
+    currentChartView = 'business-units';
+    currentBusinessUnit = null;
+    chartBackBtn.style.display = 'none';
+    chartTitle.textContent = 'Business Unit Share';
+    
+    // Re-aggregate by business unit
+    const summary = {};
+    allExpenses.forEach(exp => {
+      const key = exp.business_unit || 'N/A';
+      if (!summary[key]) {
+        summary[key] = { count: 0, total: 0 };
+      }
+      summary[key].count += 1;
+      summary[key].total += parseFloat(exp.amount) || 0;
+    });
+    
+    renderChart(summary);
+  });
 
   loadSummary();
 
@@ -36,8 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
         allExpenses = expenses;
       
       // Separate remittances from expenses
-      const remittances = expenses.filter(exp => exp.cost_centre === 'Remittances');
-      const actualExpenses = expenses.filter(exp => exp.cost_centre !== 'Remittances');
+      const remittances = expenses.filter(exp => exp.business_unit === 'Remittances');
+      const actualExpenses = expenses.filter(exp => exp.business_unit !== 'Remittances');
       
       const totalRemittances = remittances.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
       const totalExpenses = actualExpenses.reduce((sum, exp) => sum + (parseFloat(exp.amount) || 0), 0);
@@ -48,10 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
       netBalanceSpan.textContent = netBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       countSpan.textContent = expenses.length.toLocaleString('en-US');
 
-      // Aggregate by cost centre (include all for breakdown)
+      // Aggregate by business unit (include all for breakdown)
       const summary = {};
       expenses.forEach(exp => {
-        const key = exp.cost_centre || 'N/A';
+        const key = exp.business_unit || 'N/A';
         if (!summary[key]) {
           summary[key] = { count: 0, total: 0 };
         }
@@ -92,13 +119,93 @@ document.addEventListener('DOMContentLoaded', () => {
 
     entries.forEach(([centre, stats]) => {
       const tr = document.createElement('tr');
+      tr.classList.add('business-unit-row');
+      tr.dataset.businessUnit = centre;
+      tr.style.cursor = 'pointer';
+      tr.style.fontWeight = 'bold';
       tr.innerHTML = `
-        <td>${escapeHtml(centre)}</td>
+        <td>▶ ${escapeHtml(centre)}</td>
         <td>${stats.count.toLocaleString('en-US')}</td>
         <td>${stats.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       `;
+      
+      // Add click handler for expansion
+      tr.addEventListener('click', () => toggleProjectBreakdown(centre, tr));
+      
       breakdownBody.appendChild(tr);
     });
+  }
+  
+  function toggleProjectBreakdown(businessUnit, row) {
+    // Check if already expanded
+    const existingProjectRows = row.parentElement.querySelectorAll(`.project-row[data-parent="${businessUnit}"]`);
+    
+    if (existingProjectRows.length > 0) {
+      // Collapse - remove project rows
+      existingProjectRows.forEach(pr => pr.remove());
+      row.querySelector('td').textContent = '▶ ' + businessUnit;
+      return;
+    }
+    
+    // Expand - show projects
+    row.querySelector('td').textContent = '▼ ' + businessUnit;
+    
+    // Filter expenses for this business unit
+    const unitExpenses = allExpenses.filter(exp => exp.business_unit === businessUnit);
+    
+    // Group by project
+    const projectMap = {};
+    unitExpenses.forEach(exp => {
+      const projectName = exp.project || 'General';
+      if (!projectMap[projectName]) {
+        projectMap[projectName] = { count: 0, total: 0 };
+      }
+      projectMap[projectName].count += 1;
+      projectMap[projectName].total += parseFloat(exp.amount) || 0;
+    });
+    
+    // Insert project rows after the business unit row
+    const projectEntries = Object.entries(projectMap).sort((a, b) => b[1].total - a[1].total);
+    projectEntries.forEach(([project, stats]) => {
+      const projectRow = document.createElement('tr');
+      projectRow.classList.add('project-row');
+      projectRow.dataset.parent = businessUnit;
+      projectRow.style.backgroundColor = '#f8f9fa';
+      projectRow.innerHTML = `
+        <td style="padding-left: 2rem;">└─ ${escapeHtml(project)}</td>
+        <td>${stats.count.toLocaleString('en-US')}</td>
+        <td>${stats.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      `;
+      row.after(projectRow);
+      // Update reference for next insertion
+      row = projectRow;
+    });
+  }
+  
+  function drillDownToProjects(businessUnit) {
+    currentChartView = 'projects';
+    currentBusinessUnit = businessUnit;
+    
+    // Show back button and update title
+    chartBackBtn.style.display = 'inline-block';
+    chartTitle.textContent = `${businessUnit} - Projects`;
+    
+    // Filter expenses for this business unit
+    const unitExpenses = allExpenses.filter(exp => exp.business_unit === businessUnit);
+    
+    // Group by project
+    const projectMap = {};
+    unitExpenses.forEach(exp => {
+      const projectName = exp.project || 'General';
+      if (!projectMap[projectName]) {
+        projectMap[projectName] = { count: 0, total: 0 };
+      }
+      projectMap[projectName].count += 1;
+      projectMap[projectName].total += parseFloat(exp.amount) || 0;
+    });
+    
+    // Render chart with projects
+    renderChart(projectMap);
   }
 
   function renderChart(summary) {
@@ -151,6 +258,35 @@ document.addEventListener('DOMContentLoaded', () => {
               }
             }
           }
+        },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const clickedLabel = labels[index];
+            
+            if (currentChartView === 'business-units') {
+              // Drill down to projects for this business unit
+              const businessUnit = clickedLabel;
+              drillDownToProjects(businessUnit);
+              
+              // Also expand table row
+              const row = Array.from(breakdownBody.querySelectorAll('.business-unit-row'))
+                .find(r => r.dataset.businessUnit === businessUnit);
+              
+              if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.style.backgroundColor = '#fff3cd';
+                setTimeout(() => {
+                  row.style.backgroundColor = '';
+                }, 1500);
+                
+                const existingProjectRows = row.parentElement.querySelectorAll(`.project-row[data-parent="${businessUnit}"]`);
+                if (existingProjectRows.length === 0) {
+                  toggleProjectBreakdown(businessUnit, row);
+                }
+              }
+            }
+          }
         }
       }
     });
@@ -170,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       
       const amount = parseFloat(exp.amount) || 0;
-      if (exp.cost_centre === 'Remittances') {
+      if (exp.business_unit === 'Remittances') {
         monthlyData[monthKey].remittances += amount;
       } else {
         monthlyData[monthKey].expenses += amount;
@@ -260,6 +396,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     quarterSelector.innerHTML = '';
+    
+    // Add "All Quarters" option
+    const allOption = document.createElement('option');
+    allOption.value = 'all';
+    allOption.textContent = 'All Quarters';
+    quarterSelector.appendChild(allOption);
+    
     sortedQuarters.forEach((quarter, index) => {
       const option = document.createElement('option');
       option.value = quarter;
@@ -296,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const amount = parseFloat(exp.amount) || 0;
       
       if (expDate >= currentQuarterStart && expDate <= currentQuarterEnd) {
-        if (exp.cost_centre === 'Remittances') {
+        if (exp.business_unit === 'Remittances') {
           currentQRemittances += amount;
         } else {
           currentQExpenses += amount;
@@ -312,6 +455,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   
   function renderSelectedQuarter(expenses, quarterKey) {
+    // Handle "All Quarters" selection
+    if (quarterKey === 'all') {
+      let allExpenses = 0, allRemittances = 0;
+      
+      expenses.forEach(exp => {
+        const amount = parseFloat(exp.amount) || 0;
+        if (exp.business_unit === 'Remittances') {
+          allRemittances += amount;
+        } else {
+          allExpenses += amount;
+        }
+      });
+      
+      const allBalance = allRemittances - allExpenses;
+      
+      selectedQuarterTitleH4.textContent = 'All Quarters';
+      selectedQuarterExpensesSpan.textContent = allExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      selectedQuarterRemittancesSpan.textContent = allRemittances.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      selectedQuarterBalanceSpan.textContent = allBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return;
+    }
+    
     const [year, qNum] = quarterKey.split('-Q').map(Number);
     const quarter = qNum - 1;
     
@@ -325,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const amount = parseFloat(exp.amount) || 0;
       
       if (expDate >= quarterStart && expDate <= quarterEnd) {
-        if (exp.cost_centre === 'Remittances') {
+        if (exp.business_unit === 'Remittances') {
           selectedQRemittances += amount;
         } else {
           selectedQExpenses += amount;

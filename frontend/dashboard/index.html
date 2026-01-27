@@ -60,17 +60,20 @@
     </section>
 
     <section class="expenses-section">
-      <h3>By Cost Centre (Expenses Only)</h3>
+      <h3>By Business Unit (Expenses Only)</h3>
       <div class="chart-row">
         <div class="chart-card">
-          <h4>Cost Centre Share</h4>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h4 id="chartTitle">Business Unit Share</h4>
+            <button id="chartBackBtn" style="display: none; padding: 5px 15px; background-color: #2ba0d6; color: white; border: none; border-radius: 4px; cursor: pointer;">← Back</button>
+          </div>
           <canvas id="costCentreChart" width="320" height="320"></canvas>
         </div>
         <div class="table-card">
       <table id="dashCostCentreTable">
         <thead>
           <tr>
-            <th>Cost Centre</th>
+            <th>Business Unit</th>
             <th>Records</th>
             <th>Total (UGX)</th>
           </tr>

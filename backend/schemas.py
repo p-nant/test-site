@@ -6,7 +6,8 @@ class ExpenseCreate(BaseModel):
     person: str
     description: str
     amount: float
-    cost_centre: str
+    business_unit: str
+    project: str | None = None
 
 class ExpenseResponse(ExpenseCreate):
     id: int

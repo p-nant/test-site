@@ -45,17 +45,21 @@
             <input type="number" id="amount" name="amount" min="0" step="0.01" required />
           </div>
           <div class="form-group">
-            <label for="cost-centre">Cost Centre</label>
-            <select id="cost-centre" name="cost-centre" required>
-              <option value="" selected>Select Cost Centre</option>
+            <label for="business-unit">Business Unit</label>
+            <select id="business-unit" name="business-unit" required>
+              <option value="" selected>Select Business Unit</option>
               <option value="Construction">Construction</option>
-              <option value="Seedlings">Seedlings</option>
+              <option value="AgroForestry">AgroForestry</option>
               <option value="Admin Costs">Admin Costs</option>
               <option value="Remittances">Remittances</option>
               <option value="Termination">Termination</option>
               <option value="Coffee">Coffee</option>
-              <option value="Other">Other</option>
+              <option value="AgroProjects">AgroProjects</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label for="project">Project (Optional)</label>
+            <input type="text" id="project" name="project" placeholder="Enter project name" />
           </div>
           <button type="submit">Add Expense</button>
         </form>
@@ -74,7 +78,8 @@
             <th>Person</th>
             <th>Description</th>
             <th>Amount (UGX)</th>
-            <th>Category</th>
+            <th>Business Unit</th>
+            <th>Project</th>
             <th>Action</th>
           </tr>
         </thead>

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://192.168.100.198:8000';
+const API_BASE_URL = 'http://192.168.1.175:8000';
 
 let isError = false;
 
@@ -57,7 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const amount = Number(rawAmount);
-    const cost_centre = form["cost-centre"].value;
+    const business_unit = form["business-unit"].value;
+    const project = form["project"].value.trim() || null;
 
     // Basic validation
     if (!validateExpense({date, person, description, amount}) || isError) return; 
@@ -69,7 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
         person,
         description,
         amount,
-        cost_centre   
+        business_unit,
+        project
       })
 
       if (response.ok) {
@@ -113,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Highlight remittances with a different style
-    if (expense.cost_centre === 'Remittances') {
+    if (expense.business_unit === 'Remittances') {
       tr.classList.add('remittance-row');
     }
 
@@ -122,7 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
       createCell(expense.person),
       createCell(expense.description),
       createCell(amountFormatted),
-      createCell(expense.cost_centre)
+      createCell(expense.business_unit),
+      createCell(expense.project || '-')
     );
 
     // Delete button
