@@ -110,7 +110,7 @@ Open `/frontend/dashboard/index.html` to see:
 The project uses FastAPI backend with SQLite database.
 
 Deployment options:
-- **Backend**: Host the backend on Heroku, AWS, Render, or any cloud provider that supports Python
+- **Backend**: Host the backend on ngrok, Heroku, AWS, Render, or any cloud provider that supports Python
 - **Database**: For production, upgrade from SQLite to PostgreSQL (SQLAlchemy makes this easy)
 - **Frontend**: Can be served via GitHub Pages or alongside the backend
 - **CORS**: Already configured to allow frontend-backend communication

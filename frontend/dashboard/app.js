@@ -11,8 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const currentQuarterExpensesSpan = document.getElementById('currentQuarterExpenses');
   const currentQuarterRemittancesSpan = document.getElementById('currentQuarterRemittances');
-  // previousQuarterExpenses
-  // previousQuarterRemittances
   const currentQuarterBalanceSpan = document.getElementById('currentQuarterBalance');
   const selectedQuarterExpensesSpan = document.getElementById('selectedQuarterExpenses');
   const selectedQuarterRemittancesSpan = document.getElementById('selectedQuarterRemittances');
@@ -25,6 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let allExpenses = [];
   let currentChartView = 'business-units'; // or 'projects'
   let currentBusinessUnit = null;
+  let filteredExpenses = []; // Current filtered expenses based on quarter selection
   
   let chartInstance = null;
   let monthlyChartInstance = null;
@@ -36,9 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
     chartBackBtn.style.display = 'none';
     chartTitle.textContent = 'Business Unit Share';
     
-    // Re-aggregate by business unit
+    // Re-aggregate by business unit using currently filtered expenses
+    const expensesToUse = filteredExpenses.length > 0 ? filteredExpenses : allExpenses;
     const summary = {};
-    allExpenses.forEach(exp => {
+    expensesToUse.forEach(exp => {
       const key = exp.business_unit || 'N/A';
       if (!summary[key]) {
         summary[key] = { count: 0, total: 0 };
@@ -105,7 +105,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderBreakdown(summary) {
+  function renderBreakdown(summary, expensesToUse = null) {
+    // Store the expenses we're working with for drill-down
+    if (expensesToUse) {
+      filteredExpenses = expensesToUse;
+    }
+    
     breakdownBody.innerHTML = '';
     const entries = Object.entries(summary);
     if (entries.length === 0) {
@@ -150,8 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expand - show projects
     row.querySelector('td').textContent = '▼ ' + businessUnit;
     
-    // Filter expenses for this business unit
-    const unitExpenses = allExpenses.filter(exp => exp.business_unit === businessUnit);
+    // Filter expenses for this business unit from currently filtered expenses
+    const expensesToUse = filteredExpenses.length > 0 ? filteredExpenses : allExpenses;
+    const unitExpenses = expensesToUse.filter(exp => exp.business_unit === businessUnit);
     
     // Group by project
     const projectMap = {};
@@ -190,8 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
     chartBackBtn.style.display = 'inline-block';
     chartTitle.textContent = `${businessUnit} - Projects`;
     
-    // Filter expenses for this business unit
-    const unitExpenses = allExpenses.filter(exp => exp.business_unit === businessUnit);
+    // Filter expenses for this business unit from currently filtered expenses
+    const expensesToUse = filteredExpenses.length > 0 ? filteredExpenses : allExpenses;
+    const unitExpenses = expensesToUse.filter(exp => exp.business_unit === businessUnit);
     
     // Group by project
     const projectMap = {};
@@ -413,14 +420,49 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add event listener for quarter changes
     quarterSelector.addEventListener('change', () => {
-      renderSelectedQuarter(allExpenses, quarterSelector.value);
+      const quarterKey = quarterSelector.value;
+      renderSelectedQuarter(allExpenses, quarterKey);
+      
+      // Filter expenses based on selected quarter and update charts/tables
+      let filteredExpenses = allExpenses;
+      
+      if (quarterKey !== 'all') {
+        const [year, qNum] = quarterKey.split('-Q').map(Number);
+        const quarter = qNum - 1;
+        const quarterStart = new Date(year, quarter * 3, 1);
+        const quarterEnd = new Date(year, (quarter + 1) * 3, 0);
+        
+        filteredExpenses = allExpenses.filter(exp => {
+          const expDate = new Date(exp.date);
+          return expDate >= quarterStart && expDate <= quarterEnd;
+        });
+      }
+      
+      // Re-aggregate and render with filtered data
+      const summary = {};
+      filteredExpenses.forEach(exp => {
+        const key = exp.business_unit || 'N/A';
+        if (!summary[key]) {
+          summary[key] = { count: 0, total: 0 };
+        }
+        summary[key].count += 1;
+        summary[key].total += parseFloat(exp.amount) || 0;
+      });
+      
+      renderBreakdown(summary, filteredExpenses);
+      renderChart(summary);
     });
     
     // Initial render
     if (sortedQuarters.length > 1) {
+      quarterSelector.value = sortedQuarters[1];
       renderSelectedQuarter(expenses, sortedQuarters[1]);
+      // Trigger change event to filter charts/tables
+      quarterSelector.dispatchEvent(new Event('change'));
     } else if (sortedQuarters.length === 1) {
+      quarterSelector.value = sortedQuarters[0];
       renderSelectedQuarter(expenses, sortedQuarters[0]);
+      quarterSelector.dispatchEvent(new Event('change'));
     }
   }
   
